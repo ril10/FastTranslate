@@ -120,9 +120,9 @@ final class SettingsViewModel: ObservableObject {
         connectionError = ""
 
         Task {
-            let client = OllamaClient(baseURL: url)
+            let provider = OllamaProvider(baseURL: url, model: "")
             do {
-                let fetched = try await client.fetchModels()
+                let fetched = try await provider.fetchModels()
                 models = fetched
             } catch let error as OllamaError {
                 connectionError = error.localizedDescription

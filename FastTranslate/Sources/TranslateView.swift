@@ -2,10 +2,16 @@ import SwiftUI
 
 struct TranslateView: View {
 
-    @StateObject private var service = TranslationService()
+    @StateObject private var viewModel: TranslationViewModel
     @StateObject private var settings = AppSettings.shared
     @State private var showSettings = false
     @State private var copied = false
+
+    init() {
+        let settings = AppSettings.shared
+        let provider = OllamaProvider(baseURL: settings.ollamaURL, model: settings.selectedModel)
+        _viewModel = StateObject(wrappedValue: TranslationViewModel(provider: provider))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,10 +43,13 @@ struct TranslateView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(settings)
-                .onDisappear { service.updateClient() }
+                .onDisappear {
+                    let s = AppSettings.shared
+                    viewModel.updateProvider(OllamaProvider(baseURL: s.ollamaURL, model: s.selectedModel))
+                }
         }
         .onAppear {
-            service.checkOllamaStatus()
+            viewModel.checkOllamaStatus()
         }
     }
 
@@ -130,9 +139,9 @@ struct TranslateView: View {
 
             // Translate button
             Button {
-                service.translate()
+                viewModel.translate()
             } label: {
-                if service.isTranslating {
+                if viewModel.isTranslating {
                     HStack(spacing: 4) {
                         ProgressView()
                             .scaleEffect(0.7)
@@ -148,8 +157,8 @@ struct TranslateView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .onTapGesture {
-                if service.isTranslating {
-                    service.cancelTranslation()
+                if viewModel.isTranslating {
+                    viewModel.cancelTranslation()
                 }
             }
             .keyboardShortcut(.return, modifiers: .command)
@@ -163,7 +172,7 @@ struct TranslateView: View {
         VStack(spacing: 8) {
             // Input
             ZStack(alignment: .topLeading) {
-                TextEditor(text: $service.inputText)
+                TextEditor(text: $viewModel.inputText)
                     .font(.system(size: 13))
                     .frame(height: 100)
                     .scrollContentBackground(.hidden)
@@ -174,7 +183,7 @@ struct TranslateView: View {
                             .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
                     )
 
-                if service.inputText.isEmpty {
+                if viewModel.inputText.isEmpty {
                     Text("Enter text to translate...")
                         .font(.system(size: 13))
                         .foregroundStyle(.tertiary)
@@ -187,11 +196,11 @@ struct TranslateView: View {
             // Output
             ZStack(alignment: .topLeading) {
                 ScrollView {
-                    Text(service.outputText.isEmpty && service.errorMessage == nil
+                    Text(viewModel.outputText.isEmpty && viewModel.errorMessage == nil
                          ? ""
-                         : (service.errorMessage ?? service.outputText))
+                         : (viewModel.errorMessage ?? viewModel.outputText))
                         .font(.system(size: 13))
-                        .foregroundStyle(service.errorMessage != nil ? .red : .primary)
+                        .foregroundStyle(viewModel.errorMessage != nil ? .red : .primary)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .textSelection(.enabled)
                         .padding(4)
@@ -204,7 +213,7 @@ struct TranslateView: View {
                         .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
                 )
 
-                if service.outputText.isEmpty && service.errorMessage == nil && !service.isTranslating {
+                if viewModel.outputText.isEmpty && viewModel.errorMessage == nil && !viewModel.isTranslating {
                     Text("Translation will appear here...")
                         .font(.system(size: 13))
                         .foregroundStyle(.tertiary)
@@ -213,7 +222,7 @@ struct TranslateView: View {
                         .allowsHitTesting(false)
                 }
 
-                if service.isTranslating && service.outputText.isEmpty {
+                if viewModel.isTranslating && viewModel.outputText.isEmpty {
                     HStack(spacing: 6) {
                         ProgressView()
                             .scaleEffect(0.8)
@@ -235,9 +244,9 @@ struct TranslateView: View {
             // Status indicator
             HStack(spacing: 4) {
                 Circle()
-                    .fill(service.isOllamaReachable ? Color.green : Color.red)
+                    .fill(viewModel.isOllamaReachable ? Color.green : Color.red)
                     .frame(width: 6, height: 6)
-                Text(service.isOllamaReachable
+                Text(viewModel.isOllamaReachable
                      ? settings.selectedModel
                      : "Ollama not running")
                     .font(.system(size: 11))
@@ -248,9 +257,9 @@ struct TranslateView: View {
             Spacer()
 
             // Clear button
-            if !service.inputText.isEmpty || !service.outputText.isEmpty {
+            if !viewModel.inputText.isEmpty || !viewModel.outputText.isEmpty {
                 Button {
-                    service.clearAll()
+                    viewModel.clearAll()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
@@ -261,10 +270,10 @@ struct TranslateView: View {
             }
 
             // Copy button
-            if !service.outputText.isEmpty {
+            if !viewModel.outputText.isEmpty {
                 Button {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(service.outputText, forType: .string)
+                    NSPasteboard.general.setString(viewModel.outputText, forType: .string)
                     copied = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         copied = false
@@ -288,10 +297,10 @@ struct TranslateView: View {
         settings.sourceLanguage = settings.targetLanguage
         settings.targetLanguage = temp
         // Swap text too if translation exists
-        if !service.outputText.isEmpty {
-            let tempText = service.inputText
-            service.inputText = service.outputText
-            service.outputText = tempText
+        if !viewModel.outputText.isEmpty {
+            let tempText = viewModel.inputText
+            viewModel.inputText = viewModel.outputText
+            viewModel.outputText = tempText
         }
     }
 }
