@@ -16,6 +16,7 @@ final class AppSettings: ObservableObject {
         static let sourceLanguage = "sourceLanguage"
         static let targetLanguage = "targetLanguage"
         static let launchAtLogin = "launchAtLogin"
+        static let inlineTranslation = "inlineTranslation"
     }
 
     // MARK: - Published properties
@@ -34,6 +35,10 @@ final class AppSettings: ObservableObject {
 
     @Published var targetLanguage: Language {
         didSet { defaults.set(targetLanguage.code, forKey: Keys.targetLanguage) }
+    }
+
+    @Published var inlineTranslation: Bool {
+        didSet { defaults.set(inlineTranslation, forKey: Keys.inlineTranslation) }
     }
 
     @Published var launchAtLogin: Bool {
@@ -58,6 +63,12 @@ final class AppSettings: ObservableObject {
 
         sourceLanguage = Language.all.first { $0.code == sourceCode } ?? .auto
         targetLanguage = Language.all.first { $0.code == targetCode } ?? .russian
+
+        // Default: inline translation enabled
+        if defaults.object(forKey: Keys.inlineTranslation) == nil {
+            defaults.set(true, forKey: Keys.inlineTranslation)
+        }
+        inlineTranslation = defaults.bool(forKey: Keys.inlineTranslation)
 
         // Default: launch at login enabled
         if defaults.object(forKey: Keys.launchAtLogin) == nil {

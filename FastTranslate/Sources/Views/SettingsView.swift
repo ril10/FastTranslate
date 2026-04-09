@@ -106,6 +106,7 @@ struct SettingsView: View {
                 // MARK: General
                 Section("General") {
                     Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                    Toggle("Inline translation (⌘⇧T)", isOn: $settings.inlineTranslation)
                 }
 
                 // MARK: About
