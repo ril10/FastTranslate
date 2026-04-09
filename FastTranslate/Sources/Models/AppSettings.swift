@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import ServiceManagement
 
 final class AppSettings: ObservableObject {
 
@@ -14,6 +15,7 @@ final class AppSettings: ObservableObject {
         static let selectedModel = "selectedModel"
         static let sourceLanguage = "sourceLanguage"
         static let targetLanguage = "targetLanguage"
+        static let launchAtLogin = "launchAtLogin"
     }
 
     // MARK: - Published properties
@@ -34,6 +36,17 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(targetLanguage.code, forKey: Keys.targetLanguage) }
     }
 
+    @Published var launchAtLogin: Bool {
+        didSet {
+            defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
+            if launchAtLogin {
+                try? SMAppService.mainApp.register()
+            } else {
+                try? SMAppService.mainApp.unregister()
+            }
+        }
+    }
+
     // MARK: - Init
 
     private init() {
@@ -45,6 +58,15 @@ final class AppSettings: ObservableObject {
 
         sourceLanguage = Language.all.first { $0.code == sourceCode } ?? .auto
         targetLanguage = Language.all.first { $0.code == targetCode } ?? .russian
+
+        // Default: launch at login enabled
+        if defaults.object(forKey: Keys.launchAtLogin) == nil {
+            defaults.set(true, forKey: Keys.launchAtLogin)
+        }
+        launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
+        if launchAtLogin {
+            try? SMAppService.mainApp.register()
+        }
     }
 }
 

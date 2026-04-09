@@ -103,6 +103,11 @@ struct SettingsView: View {
                     }
                 }
 
+                // MARK: General
+                Section("General") {
+                    Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                }
+
                 // MARK: About
                 Section("About") {
                     LabeledContent("Version", value: "1.0.0 (MVP)")
@@ -115,7 +120,7 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .padding(.horizontal, 4)
         }
-        .frame(width: 420, height: 420)
+        .frame(width: 420, height: 480)
         .onAppear {
             settingsVM.refreshModels(url: settings.ollamaURL, settings: settings)
         }
