@@ -75,7 +75,7 @@ final class OllamaProvider: TranslationProvider {
         let model = self.model
 
         return AsyncThrowingStream { continuation in
-            Task {
+            let task = Task {
                 do {
                     guard let url = URL(string: "\(baseURL)/api/generate") else {
                         continuation.finish(throwing: OllamaError.invalidURL)
@@ -93,6 +93,7 @@ final class OllamaProvider: TranslationProvider {
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     request.httpBody = try JSONEncoder().encode(requestBody)
+                    request.timeoutInterval = 30
 
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
 
@@ -112,6 +113,7 @@ final class OllamaProvider: TranslationProvider {
                     }
 
                     for try await line in bytes.lines {
+                        try Task.checkCancellation()
                         guard !line.isEmpty,
                               let data = line.data(using: .utf8),
                               let chunk = try? JSONDecoder().decode(OllamaGenerateResponse.self, from: data) else {
@@ -130,10 +132,20 @@ final class OllamaProvider: TranslationProvider {
                     continuation.finish(throwing: error)
                 }
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
-    // MARK: - Ollama-specific (not part of protocol)
+    func checkAvailability() async -> Bool {
+        do {
+            _ = try await fetchModels()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    // MARK: - Ollama-specific
 
     func fetchModels() async throws -> [OllamaModel] {
         guard let url = URL(string: "\(baseURL)/api/tags") else {

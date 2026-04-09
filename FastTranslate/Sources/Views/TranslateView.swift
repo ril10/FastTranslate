@@ -45,11 +45,11 @@ struct TranslateView: View {
                 .environmentObject(settings)
                 .onDisappear {
                     let s = AppSettings.shared
-                    viewModel.updateProvider(OllamaProvider(baseURL: s.ollamaURL, model: s.selectedModel))
+                    viewModel.send(.updateProvider(OllamaProvider(baseURL: s.ollamaURL, model: s.selectedModel)))
                 }
         }
         .onAppear {
-            viewModel.checkOllamaStatus()
+            viewModel.send(.checkOllamaStatus)
         }
     }
 
@@ -59,7 +59,7 @@ struct TranslateView: View {
         HStack {
             Image(systemName: "translate")
                 .foregroundStyle(.secondary)
-            Text("MenuTranslate")
+            Text("FastTranslate")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
             Button {
@@ -139,7 +139,11 @@ struct TranslateView: View {
 
             // Translate button
             Button {
-                viewModel.translate()
+                if viewModel.isTranslating {
+                    viewModel.send(.cancelTranslation)
+                } else {
+                    viewModel.send(.translate)
+                }
             } label: {
                 if viewModel.isTranslating {
                     HStack(spacing: 4) {
@@ -156,13 +160,8 @@ struct TranslateView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .onTapGesture {
-                if viewModel.isTranslating {
-                    viewModel.cancelTranslation()
-                }
-            }
             .keyboardShortcut(.return, modifiers: .command)
-            .help("Translate (⌘↵)")
+            .help(viewModel.isTranslating ? "Stop (⌘↵)" : "Translate (⌘↵)")
         }
     }
 
@@ -171,27 +170,18 @@ struct TranslateView: View {
     private var translationArea: some View {
         VStack(spacing: 8) {
             // Input
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $viewModel.inputText)
-                    .font(.system(size: 13))
-                    .frame(height: 100)
-                    .scrollContentBackground(.hidden)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .cornerRadius(6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
-                    )
-
-                if viewModel.inputText.isEmpty {
-                    Text("Enter text to translate...")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, 4)
-                        .padding(.leading, 5)
-                        .allowsHitTesting(false)
-                }
-            }
+            TextField("Enter text to translate...", text: $viewModel.inputText, axis: .vertical)
+                .font(.system(size: 13))
+                .lineLimit(5...10)
+                .textFieldStyle(.plain)
+                .padding(6)
+                .frame(height: 100, alignment: .topLeading)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                )
 
             // Output
             ZStack(alignment: .topLeading) {
@@ -259,7 +249,7 @@ struct TranslateView: View {
             // Clear button
             if !viewModel.inputText.isEmpty || !viewModel.outputText.isEmpty {
                 Button {
-                    viewModel.clearAll()
+                    viewModel.send(.clearAll)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
@@ -275,7 +265,8 @@ struct TranslateView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(viewModel.outputText, forType: .string)
                     copied = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
                         copied = false
                     }
                 } label: {
@@ -298,9 +289,7 @@ struct TranslateView: View {
         settings.targetLanguage = temp
         // Swap text too if translation exists
         if !viewModel.outputText.isEmpty {
-            let tempText = viewModel.inputText
-            viewModel.inputText = viewModel.outputText
-            viewModel.outputText = tempText
+            viewModel.send(.swapTexts(newInput: viewModel.outputText, newOutput: viewModel.inputText))
         }
     }
 }
