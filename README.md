@@ -50,7 +50,7 @@
 1. Go to [Releases](https://github.com/ril10/FastTranslate/releases/latest)
 2. Download `FastTranslate-v*.zip`
 3. Unzip and drag `FastTranslate.app` to your **Applications** folder
-4. On first launch, right-click the app > **Open** (macOS Gatekeeper prompt for unsigned apps)
+4. On first launch macOS will block the app. Go to **System Settings > Privacy & Security**, scroll down and click **Open Anyway**
 
 ### From Source
 
