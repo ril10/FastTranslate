@@ -38,7 +38,23 @@ final class FloatingTranslationPanel {
                 self?.dismiss()
             })
         )
-        panel.contentView = hostView
+        hostView.wantsLayer = true
+        hostView.layer?.cornerRadius = 12
+        hostView.layer?.masksToBounds = true
+
+        let wrapper = NSView()
+        wrapper.wantsLayer = true
+        wrapper.layer?.backgroundColor = .clear
+        wrapper.addSubview(hostView)
+        hostView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hostView.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            hostView.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            hostView.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            hostView.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+        ])
+
+        panel.contentView = wrapper
         self.hostView = hostView
 
         // Initial size from content
@@ -178,9 +194,11 @@ struct FloatingTranslationView: View {
                 Button {
                     onDismiss()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .medium))
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
