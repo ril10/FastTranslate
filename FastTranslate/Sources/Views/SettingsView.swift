@@ -115,7 +115,7 @@ struct SettingsView: View {
 
                 // MARK: About
                 Section("About") {
-                    LabeledContent("Version", value: "1.0.0 (MVP)")
+                    LabeledContent("Version", value: "1.0.0")
                     LabeledContent("Requires", value: "Ollama running locally")
 
                     Link("Get Ollama →", destination: Constants.ollamaURL)
