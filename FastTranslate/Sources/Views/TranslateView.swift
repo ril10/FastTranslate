@@ -27,7 +27,7 @@ struct TranslateView: View {
 
             Divider()
 
-            // MARK: Input / Output
+            // MARK: Translation
             translationArea
                 .padding(12)
 
@@ -137,31 +137,8 @@ struct TranslateView: View {
 
             Spacer()
 
-            // Translate button
-            Button {
-                if viewModel.isTranslating {
-                    viewModel.send(.cancelTranslation)
-                } else {
-                    viewModel.send(.translate)
-                }
-            } label: {
-                if viewModel.isTranslating {
-                    HStack(spacing: 4) {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .frame(width: 12, height: 12)
-                        Text("Stop")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                } else {
-                    Text("Translate")
-                        .font(.system(size: 12, weight: .medium))
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .keyboardShortcut(.return, modifiers: .command)
-            .help(viewModel.isTranslating ? "Stop (⌘↵)" : "Translate (⌘↵)")
+            // Status indicator
+            translationStatus
         }
     }
 
@@ -213,15 +190,10 @@ struct TranslateView: View {
                 }
 
                 if viewModel.isTranslating && viewModel.outputText.isEmpty {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Translating...")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(8)
-                    .allowsHitTesting(false)
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .padding(8)
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -276,6 +248,43 @@ struct TranslateView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Copy translation")
+            }
+        }
+    }
+
+    // MARK: - Translation Status
+
+    @ViewBuilder
+    private var translationStatus: some View {
+        switch viewModel.translationState {
+        case .idle:
+            EmptyView()
+        case .translating:
+            HStack(spacing: 4) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 12, height: 12)
+                Text("Translating...")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        case .done:
+            HStack(spacing: 3) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.green)
+                Text("Done")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        case .error:
+            HStack(spacing: 3) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+                Text("Error")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
             }
         }
     }

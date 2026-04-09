@@ -16,23 +16,52 @@ final class TranslationViewModel: ObservableObject {
         case swapTexts(newInput: String, newOutput: String)
     }
 
+    // MARK: - Translation State
+
+    enum TranslationState: Equatable {
+        case idle
+        case translating
+        case done
+        case error(String)
+    }
+
     // MARK: - Output (Published state for View bindings)
 
     @Published var inputText: String = ""
     @Published private(set) var outputText: String = ""
-    @Published private(set) var isTranslating: Bool = false
-    @Published private(set) var errorMessage: String?
+    @Published private(set) var translationState: TranslationState = .idle
     @Published private(set) var isOllamaReachable: Bool = false
+
+    var isTranslating: Bool { translationState == .translating }
+    var errorMessage: String? {
+        if case .error(let msg) = translationState { return msg }
+        return nil
+    }
 
     // MARK: - Private
 
     private var provider: TranslationProvider
     private var currentTask: Task<Void, Never>?
+    private var autoTranslateTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Init
 
     init(provider: TranslationProvider) {
         self.provider = provider
+        setupAutoTranslate()
+    }
+
+    private func setupAutoTranslate() {
+        $inputText
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] text in
+                guard let self,
+                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                self.translate()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Input handling
@@ -62,8 +91,7 @@ final class TranslationViewModel: ObservableObject {
 
         currentTask?.cancel()
         outputText = ""
-        isTranslating = true
-        errorMessage = nil
+        translationState = .translating
 
         let settings = AppSettings.shared
         let text = inputText
@@ -78,25 +106,26 @@ final class TranslationViewModel: ObservableObject {
                     guard !Task.isCancelled else { break }
                     outputText += token
                 }
+                if !Task.isCancelled {
+                    translationState = outputText.isEmpty ? .idle : .done
+                }
             } catch {
                 if !Task.isCancelled {
-                    errorMessage = error.localizedDescription
+                    translationState = .error(error.localizedDescription)
                 }
             }
-            isTranslating = false
         }
     }
 
     private func cancelTranslation() {
         currentTask?.cancel()
-        isTranslating = false
+        translationState = .idle
     }
 
     private func checkOllamaStatus() {
         Task {
             let reachable = await provider.checkAvailability()
             isOllamaReachable = reachable
-            if reachable { errorMessage = nil }
         }
     }
 
@@ -108,8 +137,7 @@ final class TranslationViewModel: ObservableObject {
     private func clearAll() {
         inputText = ""
         outputText = ""
-        errorMessage = nil
         currentTask?.cancel()
-        isTranslating = false
+        translationState = .idle
     }
 }

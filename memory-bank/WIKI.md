@@ -15,7 +15,7 @@
 
 | Feature | Status | Summary | Path |
 |---------|--------|---------|------|
-| *(no features documented yet)* | | | |
+| core-architecture | 🟡 In Progress | Architecture decisions: single TranslationProvider protocol, separate HistoryService, flat structure | `core-architecture/` |
 
 ## Architecture Quick Reference
 
