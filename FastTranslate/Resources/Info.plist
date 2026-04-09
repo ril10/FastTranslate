@@ -20,13 +20,16 @@
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
-    <!-- Скрываем иконку из Dock -->
+    <!-- Hide Dock icon -->
     <key>LSUIElement</key>
     <true/>
-    <!-- Минимальная версия macOS -->
+    <!-- Minimum macOS version -->
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
-    <!-- Разрешаем localhost запросы -->
+    <!-- Accessibility for inline translation hotkey -->
+    <key>NSAccessibilityUsageDescription</key>
+    <string>FastTranslate needs accessibility access to read selected text for inline translation (⌘⇧T).</string>
+    <!-- Allow localhost requests -->
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>

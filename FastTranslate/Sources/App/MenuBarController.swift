@@ -10,7 +10,7 @@ final class MenuBarController {
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        // Настраиваем popover
+        // Configure popover
         popover = NSPopover()
         popover.contentSize = NSSize(width: 380, height: 320)
         popover.behavior = .transient
@@ -19,7 +19,7 @@ final class MenuBarController {
         let contentView = TranslateView()
         popover.contentViewController = NSHostingController(rootView: contentView)
 
-        // Иконка в menu bar (после инициализации всех stored properties)
+        // Menu bar icon (after all stored properties are initialized)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "translate", accessibilityDescription: "FastTranslate")
             button.action = #selector(togglePopover)

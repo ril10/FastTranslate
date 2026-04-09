@@ -4,6 +4,8 @@ import Carbon.HIToolbox
 final class GlobalHotkeyService {
 
     private var eventHandler: EventHandlerRef?
+    private var hotKeyRef: EventHotKeyRef?
+    private var retainedSelf: Unmanaged<GlobalHotkeyService>?
     private let onTrigger: () -> Void
 
     init(onTrigger: @escaping () -> Void) {
@@ -12,9 +14,13 @@ final class GlobalHotkeyService {
     }
 
     deinit {
+        if let hotKey = hotKeyRef {
+            UnregisterEventHotKey(hotKey)
+        }
         if let handler = eventHandler {
             RemoveEventHandler(handler)
         }
+        retainedSelf?.release()
     }
 
     // MARK: - Private
@@ -25,22 +31,22 @@ final class GlobalHotkeyService {
         hotKeyID.signature = OSType(0x4654_5248) // "FTRH"
         hotKeyID.id = 1
 
-        var hotKeyRef: EventHotKeyRef?
-        let modifiers: UInt32 = UInt32(cmdKey | shiftKey)
-        let keyCode: UInt32 = UInt32(kVK_ANSI_T)
+        let modifiers = UInt32(cmdKey | shiftKey)
+        let keyCode = UInt32(kVK_ANSI_T)
 
-        RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        guard status == noErr else { return }
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
 
-        let handler: EventHandlerUPP = { _, event, userData -> OSStatus in
+        let handler: EventHandlerUPP = { _, _, userData -> OSStatus in
             guard let userData else { return OSStatus(eventNotHandledErr) }
             let service = Unmanaged<GlobalHotkeyService>.fromOpaque(userData).takeUnretainedValue()
             service.onTrigger()
             return noErr
         }
 
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(GetApplicationEventTarget(), handler, 1, &eventType, selfPtr, &eventHandler)
+        retainedSelf = Unmanaged.passRetained(self)
+        InstallEventHandler(GetApplicationEventTarget(), handler, 1, &eventType, retainedSelf!.toOpaque(), &eventHandler)
     }
 }

@@ -1,5 +1,9 @@
 import SwiftUI
-import Combine
+
+private enum Constants {
+    // swiftlint:disable:next force_unwrapping
+    static let ollamaURL = URL(string: "https://ollama.com")!
+}
 
 struct SettingsView: View {
 
@@ -114,7 +118,7 @@ struct SettingsView: View {
                     LabeledContent("Version", value: "1.0.0 (MVP)")
                     LabeledContent("Requires", value: "Ollama running locally")
 
-                    Link("Get Ollama →", destination: URL(string: "https://ollama.com")!)
+                    Link("Get Ollama →", destination: Constants.ollamaURL)
                         .font(.system(size: 12))
                 }
             }
@@ -124,39 +128,6 @@ struct SettingsView: View {
         .frame(width: 420, height: 480)
         .onAppear {
             settingsVM.refreshModels(url: settings.ollamaURL, settings: settings)
-        }
-    }
-}
-
-// MARK: - ViewModel
-
-@MainActor
-final class SettingsViewModel: ObservableObject {
-    @Published var models: [OllamaModel] = []
-    @Published var isLoadingModels = false
-    @Published var connectionError = ""
-
-    func refreshModels(url: String, settings: AppSettings) {
-        isLoadingModels = true
-        connectionError = ""
-
-        Task {
-            let provider = OllamaProvider(baseURL: url, model: "")
-            do {
-                let fetched = try await provider.fetchModels()
-                models = fetched
-                // Если сохранённой модели нет в списке — выбрать первую доступную
-                if !fetched.isEmpty && !fetched.contains(where: { $0.name == settings.selectedModel }) {
-                    settings.selectedModel = fetched[0].name
-                }
-            } catch let error as OllamaError {
-                connectionError = error.localizedDescription
-                models = []
-            } catch {
-                connectionError = "Cannot connect to Ollama"
-                models = []
-            }
-            isLoadingModels = false
         }
     }
 }

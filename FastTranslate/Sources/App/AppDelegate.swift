@@ -17,28 +17,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        menuBarController = nil
         hotkeyService = nil
+        menuBarController = nil
         floatingPanel = nil
     }
 
     // MARK: - Hotkey Handler
 
     private func handleHotkey() {
-        let settings = AppSettings.shared
-        guard settings.inlineTranslation else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let settings = AppSettings.shared
+            guard settings.inlineTranslation else { return }
 
-        Task { @MainActor in
-            // Save current clipboard
             let pasteboard = NSPasteboard.general
-            let savedContents = pasteboard.pasteboardItems?.compactMap { item -> (NSPasteboard.PasteboardType, Data)? in
-                guard let types = item.types.first, let data = item.data(forType: types) else { return nil }
-                return (types, data)
-            }
+
+            // Save all clipboard types
+            let savedItems: [[(NSPasteboard.PasteboardType, Data)]] = pasteboard.pasteboardItems?.map { item in
+                item.types.compactMap { type in
+                    guard let data = item.data(forType: type) else { return nil }
+                    return (type, data)
+                }
+            } ?? []
 
             // Simulate Cmd+C to copy selected text
             let src = CGEventSource(stateID: .hidSystemState)
-            let keyDown = CGEvent(keyboardEventSource: src, virtualKey: 0x08, keyDown: true) // 'c'
+            let keyDown = CGEvent(keyboardEventSource: src, virtualKey: 0x08, keyDown: true)
             let keyUp = CGEvent(keyboardEventSource: src, virtualKey: 0x08, keyDown: false)
             keyDown?.flags = .maskCommand
             keyUp?.flags = .maskCommand
@@ -52,10 +56,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             // Restore clipboard
             pasteboard.clearContents()
-            if let saved = savedContents {
-                for (type, data) in saved {
-                    pasteboard.setData(data, forType: type)
+            for itemTypes in savedItems {
+                let item = NSPasteboardItem()
+                for (type, data) in itemTypes {
+                    item.setData(data, forType: type)
                 }
+                pasteboard.writeObjects([item])
             }
 
             guard !text.isEmpty else { return }

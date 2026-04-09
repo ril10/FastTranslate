@@ -42,7 +42,6 @@ final class TranslationViewModel: ObservableObject {
 
     private var provider: TranslationProvider
     private var currentTask: Task<Void, Never>?
-    private var autoTranslateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Init
