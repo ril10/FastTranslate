@@ -21,7 +21,7 @@ final class MenuBarController {
 
         // Menu bar icon (after all stored properties are initialized)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "translate", accessibilityDescription: "FastTranslate")
+            button.image = NSImage(named: "MenuBarIcon")
             button.action = #selector(togglePopover)
             button.target = self
         }
