@@ -117,10 +117,10 @@ Sources/
 | French | fr | :fr: |
 | Spanish | es | :es: |
 | Italian | it | :it: |
-| Portuguese | pt | :flag_pt: |
+| Portuguese | pt | :pt: |
 | Chinese | zh | :cn: |
 | Japanese | ja | :jp: |
-| Polish | pl | :flag_pl: |
+| Polish | pl | :pl: |
 | Ukrainian | uk | :ukraine: |
 
 ## Contributing
@@ -138,7 +138,6 @@ Contributions are welcome! Feel free to open issues and pull requests.
 If you find FastTranslate useful, consider buying me a coffee:
 
 <a href="https://buymeacoffee.com/ril10">
-  <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=ril10&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" />
 </a>
 
 ## License
