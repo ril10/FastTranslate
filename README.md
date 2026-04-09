@@ -6,7 +6,7 @@
 
 <p align="center">
   A lightweight macOS menu bar translator powered by local LLM models via <a href="https://ollama.com">Ollama</a>.<br>
-  Private, fast, no cloud — your text never leaves your machine.
+  Private, fast, no cloud - your text never leaves your machine.
 </p>
 
 <p align="center">
@@ -20,15 +20,15 @@
 
 ## Features
 
-- **Menu bar app** — lives in your status bar, no Dock icon
-- **Local LLM translation** — uses Ollama models (Gemma, LLaMA, Qwen, etc.)
-- **Streaming output** — see translation appear token by token in real-time
-- **Auto-translate** — translation starts automatically as you type or paste text
-- **Inline translation (Cmd+Shift+T)** — select text anywhere, press the hotkey, get a floating glass panel with translation right at your cursor
-- **12 languages** — English, Russian, German, French, Spanish, Italian, Portuguese, Chinese, Japanese, Polish, Ukrainian + auto-detect
-- **Launch at login** — starts automatically with macOS
-- **Dark/Light mode** — custom menu bar icons for both themes
-- **Privacy first** — zero network calls to external services, everything runs locally
+- **Menu bar app** - lives in your status bar, no Dock icon
+- **Local LLM translation** - uses Ollama models (Gemma, LLaMA, Qwen, etc.)
+- **Streaming output** - see translation appear token by token in real-time
+- **Auto-translate** - translation starts automatically as you type or paste text
+- **Inline translation (Cmd+Shift+T)** - select text anywhere, press the hotkey, get a floating glass panel with translation right at your cursor
+- **12 languages** - English, Russian, German, French, Spanish, Italian, Portuguese, Chinese, Japanese, Polish, Ukrainian + auto-detect
+- **Launch at login** - starts automatically with macOS
+- **Dark/Light mode** - custom menu bar icons for both themes
+- **Privacy first** - zero network calls to external services, everything runs locally
 
 ## Screenshots
 
@@ -71,7 +71,7 @@ Build and run with Xcode (Cmd+R).
 
 ### Menu Bar Translator
 
-Click the FastTranslate icon in the menu bar to open the translation popover. Type or paste text — translation starts automatically.
+Click the FastTranslate icon in the menu bar to open the translation popover. Type or paste text - translation starts automatically.
 
 ### Inline Translation
 
@@ -84,11 +84,11 @@ Click the FastTranslate icon in the menu bar to open the translation popover. Ty
 
 ### Settings
 
-- **Server URL** — Ollama server address (default: `http://localhost:11434`)
-- **Model** — choose from locally available Ollama models
-- **Source/Target language** — default language pair
-- **Launch at login** — auto-start with macOS
-- **Inline translation** — enable/disable the Cmd+Shift+T hotkey
+- **Server URL** - Ollama server address (default: `http://localhost:11434`)
+- **Model** - choose from locally available Ollama models
+- **Source/Target language** - default language pair
+- **Launch at login** - auto-start with macOS
+- **Inline translation** - enable/disable the Cmd+Shift+T hotkey
 
 ## Architecture
 
@@ -101,10 +101,10 @@ Sources/
 └── Services/             # TranslationProvider protocol, OllamaProvider, GlobalHotkeyService
 ```
 
-- **Input/Output pattern** — ViewModels use `send(_ input:)` for events and `@Published` properties for state
-- **TranslationProvider protocol** — abstraction over LLM backends, easy to add new providers
-- **AsyncThrowingStream** — streaming translation with proper cancellation
-- **SwiftUI + AppKit** — SwiftUI views hosted in NSPopover and NSPanel
+- **Input/Output pattern** - ViewModels use `send(_ input:)` for events and `@Published` properties for state
+- **TranslationProvider protocol** - abstraction over LLM backends, easy to add new providers
+- **AsyncThrowingStream** - streaming translation with proper cancellation
+- **SwiftUI + AppKit** - SwiftUI views hosted in NSPopover and NSPanel
 
 ## Supported Languages
 
@@ -117,10 +117,10 @@ Sources/
 | French | fr | :fr: |
 | Spanish | es | :es: |
 | Italian | it | :it: |
-| Portuguese | pt | :pt: |
+| Portuguese | pt | :portugal: |
 | Chinese | zh | :cn: |
 | Japanese | ja | :jp: |
-| Polish | pl | :pl: |
+| Polish | pl | :poland: |
 | Ukrainian | uk | :ukraine: |
 
 ## Contributing
@@ -137,9 +137,8 @@ Contributions are welcome! Feel free to open issues and pull requests.
 
 If you find FastTranslate useful, consider buying me a coffee:
 
-<a href="https://buymeacoffee.com/ril10">
-</a>
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/ril10)
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
