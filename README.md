@@ -32,12 +32,11 @@
 
 ## Screenshots
 
-<!-- Add your screenshots here -->
-<!-- ![Main window](docs/screenshots/main-window.png) -->
-<!-- ![Inline translation](docs/screenshots/inline-translation.png) -->
-<!-- ![Settings](docs/screenshots/settings.png) -->
-
-*Screenshots coming soon*
+<p align="center">
+  <img src="docs/screenshots/main-window.png" width="380" alt="Main window">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/languages.png" width="380" alt="Language selection">
+</p>
 
 ## Requirements
 
