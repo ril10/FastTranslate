@@ -65,7 +65,7 @@ Build and run with Xcode (Cmd+R).
 ### Setup Ollama
 
 1. Install Ollama from [ollama.com](https://ollama.com)
-2. Pull a model:
+2. Pull a model (we recommend `gemma3:12b`, but you can use any Ollama model you like):
    ```bash
    ollama pull gemma3:12b
    ```
