@@ -25,39 +25,44 @@ struct SettingsView: View {
             Form {
                 // MARK: Ollama
                 Section("Ollama") {
-                    LabeledContent("Server URL") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Server URL")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
                         TextField("http://localhost:11434", text: $settings.ollamaURL)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 220)
                     }
 
-                    LabeledContent("Model") {
-                        HStack {
-                            if settingsVM.isLoadingModels {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                    .frame(width: 16, height: 16)
-                            } else if settingsVM.models.isEmpty {
-                                Text("No models found")
-                                    .foregroundStyle(.secondary)
-                                    .font(.system(size: 12))
-                            } else {
-                                Picker("", selection: $settings.selectedModel) {
-                                    ForEach(settingsVM.models, id: \.name) { model in
-                                        Text(model.name).tag(model.name)
-                                    }
+                    HStack {
+                        Text("Model")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if settingsVM.isLoadingModels {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 16, height: 16)
+                        } else if settingsVM.models.isEmpty {
+                            Text("No models found")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 12))
+                        } else {
+                            Picker("", selection: $settings.selectedModel) {
+                                ForEach(settingsVM.models, id: \.name) { model in
+                                    Text(model.name).tag(model.name)
                                 }
-                                .frame(width: 220)
                             }
-
-                            Button {
-                                settingsVM.refreshModels(url: settings.ollamaURL)
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            .buttonStyle(.plain)
-                            .help("Refresh models list")
+                            .labelsHidden()
+                            .frame(maxWidth: 200)
                         }
+
+                        Button {
+                            settingsVM.refreshModels(url: settings.ollamaURL, settings: settings)
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Refresh models list")
                     }
 
                     if !settingsVM.connectionError.isEmpty {
@@ -69,22 +74,32 @@ struct SettingsView: View {
 
                 // MARK: Default Languages
                 Section("Default Languages") {
-                    LabeledContent("Source") {
+                    HStack {
+                        Text("Source")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
                         Picker("", selection: $settings.sourceLanguage) {
                             ForEach(Language.all) { lang in
                                 Text("\(lang.flag) \(lang.name)").tag(lang)
                             }
                         }
-                        .frame(width: 180)
+                        .labelsHidden()
+                        .fixedSize()
                     }
 
-                    LabeledContent("Target") {
+                    HStack {
+                        Text("Target")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
                         Picker("", selection: $settings.targetLanguage) {
                             ForEach(Language.targets) { lang in
                                 Text("\(lang.flag) \(lang.name)").tag(lang)
                             }
                         }
-                        .frame(width: 180)
+                        .labelsHidden()
+                        .fixedSize()
                     }
                 }
 
@@ -102,7 +117,7 @@ struct SettingsView: View {
         }
         .frame(width: 420, height: 420)
         .onAppear {
-            settingsVM.refreshModels(url: settings.ollamaURL)
+            settingsVM.refreshModels(url: settings.ollamaURL, settings: settings)
         }
     }
 }
@@ -115,7 +130,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var isLoadingModels = false
     @Published var connectionError = ""
 
-    func refreshModels(url: String) {
+    func refreshModels(url: String, settings: AppSettings) {
         isLoadingModels = true
         connectionError = ""
 
@@ -124,6 +139,10 @@ final class SettingsViewModel: ObservableObject {
             do {
                 let fetched = try await provider.fetchModels()
                 models = fetched
+                // Если сохранённой модели нет в списке — выбрать первую доступную
+                if !fetched.isEmpty && !fetched.contains(where: { $0.name == settings.selectedModel }) {
+                    settings.selectedModel = fetched[0].name
+                }
             } catch let error as OllamaError {
                 connectionError = error.localizedDescription
                 models = []

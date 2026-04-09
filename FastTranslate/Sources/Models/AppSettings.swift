@@ -38,7 +38,7 @@ final class AppSettings: ObservableObject {
 
     private init() {
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://localhost:11434"
-        selectedModel = defaults.string(forKey: Keys.selectedModel) ?? "qwen2.5:7b"
+        selectedModel = defaults.string(forKey: Keys.selectedModel) ?? "gemma3:12b"
 
         let sourceCode = defaults.string(forKey: Keys.sourceLanguage) ?? "auto"
         let targetCode = defaults.string(forKey: Keys.targetLanguage) ?? "ru"
