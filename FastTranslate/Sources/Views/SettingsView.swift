@@ -7,9 +7,9 @@ private enum Constants {
 
 struct SettingsView: View {
 
-    @EnvironmentObject private var settings: AppSettings
+    @Bindable var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var settingsVM = SettingsViewModel()
+    @State private var settingsVM = SettingsViewModel()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

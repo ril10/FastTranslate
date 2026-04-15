@@ -7,7 +7,7 @@ final class MenuBarController {
     private var popover: NSPopover
     private var eventMonitor: EventMonitor?
 
-    init() {
+    init(settings: AppSettings) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         // Configure popover
@@ -16,7 +16,7 @@ final class MenuBarController {
         popover.behavior = .transient
         popover.animates = true
 
-        let contentView = TranslateView()
+        let contentView = TranslateView(settings: settings)
         popover.contentViewController = NSHostingController(rootView: contentView)
 
         // Menu bar icon (after all stored properties are initialized)

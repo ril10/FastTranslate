@@ -1,11 +1,12 @@
 import Foundation
-import Combine
+import Observation
 
 @MainActor
-final class SettingsViewModel: ObservableObject {
-    @Published var models: [OllamaModel] = []
-    @Published var isLoadingModels = false
-    @Published var connectionError = ""
+@Observable
+final class SettingsViewModel {
+    var models: [OllamaModel] = []
+    var isLoadingModels = false
+    var connectionError = ""
 
     func refreshModels(url: String, settings: AppSettings) {
         isLoadingModels = true

@@ -2,15 +2,15 @@ import SwiftUI
 
 struct TranslateView: View {
 
-    @StateObject private var viewModel: TranslationViewModel
-    @StateObject private var settings = AppSettings.shared
+    @State private var viewModel: TranslationViewModel
+    @Bindable var settings: AppSettings
     @State private var showSettings = false
     @State private var copied = false
 
-    init() {
-        let settings = AppSettings.shared
+    init(settings: AppSettings) {
+        self.settings = settings
         let provider = OllamaProvider(baseURL: settings.ollamaURL, model: settings.selectedModel)
-        _viewModel = StateObject(wrappedValue: TranslationViewModel(provider: provider))
+        _viewModel = State(initialValue: TranslationViewModel(provider: provider, settings: settings))
     }
 
     var body: some View {
@@ -41,11 +41,9 @@ struct TranslateView: View {
         .frame(width: 380)
         .background(Color(NSColor.windowBackgroundColor))
         .sheet(isPresented: $showSettings) {
-            SettingsView()
-                .environmentObject(settings)
+            SettingsView(settings: settings)
                 .onDisappear {
-                    let s = AppSettings.shared
-                    viewModel.send(.updateProvider(OllamaProvider(baseURL: s.ollamaURL, model: s.selectedModel)))
+                    viewModel.send(.updateProvider(OllamaProvider(baseURL: settings.ollamaURL, model: settings.selectedModel)))
                 }
         }
         .onAppear {
@@ -70,6 +68,16 @@ struct TranslateView: View {
             }
             .buttonStyle(.plain)
             .help("Settings")
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Image(systemName: "power")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Quit FastTranslate")
+            .keyboardShortcut("q", modifiers: .command)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

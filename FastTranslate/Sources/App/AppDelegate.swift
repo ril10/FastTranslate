@@ -2,14 +2,21 @@ import Cocoa
 
 class AppDelegate: NSObject, NSApplicationDelegate {
 
+    private var settings: AppSettings?
     private var menuBarController: MenuBarController?
     private var hotkeyService: GlobalHotkeyService?
     private var floatingPanel: FloatingTranslationPanel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        menuBarController = MenuBarController()
-        floatingPanel = FloatingTranslationPanel()
+        let settings = AppSettings(storage: UserDefaultsStorage())
+        self.settings = settings
+        menuBarController = MenuBarController(settings: settings)
+        floatingPanel = FloatingTranslationPanel(
+            settings: settings,
+            textReplacer: TextReplacementService(),
+            permissions: AccessibilityPermissionService()
+        )
 
         hotkeyService = GlobalHotkeyService { [weak self] in
             self?.handleHotkey()
@@ -20,14 +27,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyService = nil
         menuBarController = nil
         floatingPanel = nil
+        settings = nil
     }
 
     // MARK: - Hotkey Handler
 
     private func handleHotkey() {
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            let settings = AppSettings.shared
+            guard let self, let settings = self.settings else { return }
             guard settings.inlineTranslation else { return }
 
             let pasteboard = NSPasteboard.general
