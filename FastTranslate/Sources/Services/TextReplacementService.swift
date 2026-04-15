@@ -1,9 +1,5 @@
 import Cocoa
 
-struct SavedClipboardItem {
-    let entries: [(NSPasteboard.PasteboardType, Data)]
-}
-
 @MainActor
 protocol TextReplacing {
     func replaceSelection(with text: String) async
@@ -14,32 +10,9 @@ final class TextReplacementService: TextReplacing {
 
     func replaceSelection(with text: String) async {
         guard !text.isEmpty else { return }
-        let saved = saveClipboard()
+        let snapshot = ClipboardSnapshot()
         await paste(text)
-        restoreClipboard(saved)
-    }
-
-    func saveClipboard() -> [SavedClipboardItem] {
-        let pasteboard = NSPasteboard.general
-        return pasteboard.pasteboardItems?.map { item in
-            let entries = item.types.compactMap { type -> (NSPasteboard.PasteboardType, Data)? in
-                guard let data = item.data(forType: type) else { return nil }
-                return (type, data)
-            }
-            return SavedClipboardItem(entries: entries)
-        } ?? []
-    }
-
-    func restoreClipboard(_ items: [SavedClipboardItem]) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        for saved in items {
-            let item = NSPasteboardItem()
-            for (type, data) in saved.entries {
-                item.setData(data, forType: type)
-            }
-            pasteboard.writeObjects([item])
-        }
+        snapshot.restore()
     }
 
     func paste(_ text: String) async {
