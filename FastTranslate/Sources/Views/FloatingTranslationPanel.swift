@@ -1,15 +1,27 @@
 import Cocoa
 import SwiftUI
-import Combine
+import Observation
 
 @MainActor
 final class FloatingTranslationPanel {
 
     private var panel: NSPanel?
     private var hostView: NSHostingView<FloatingTranslationView>?
-    private var viewModel = FloatingTranslationViewModel()
+    private let viewModel: FloatingTranslationViewModel
     private var eventMonitor: Any?
-    private var resizeCancellable: AnyCancellable?
+    private var resizeTask: Task<Void, Never>?
+
+    init(
+        settings: AppSettings,
+        textReplacer: TextReplacing,
+        permissions: AccessibilityPermissionChecking
+    ) {
+        self.viewModel = FloatingTranslationViewModel(
+            settings: settings,
+            textReplacer: textReplacer,
+            permissions: permissions
+        )
+    }
 
     // MARK: - Public
 
@@ -34,9 +46,21 @@ final class FloatingTranslationPanel {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let hostView = NSHostingView(rootView:
-            FloatingTranslationView(viewModel: viewModel, onDismiss: { [weak self] in
-                self?.dismiss()
-            })
+            FloatingTranslationView(
+                viewModel: viewModel,
+                onDismiss: { [weak self] in
+                    self?.dismiss()
+                },
+                onReplace: { [weak self] in
+                    guard let self else { return }
+                    let vm = self.viewModel
+                    self.dismiss()
+                    Task { await vm.replaceSelection() }
+                },
+                onTranslatedTextChanged: { [weak self] in
+                    self?.scheduleResize()
+                }
+            )
         )
         hostView.wantsLayer = true
         hostView.layer?.cornerRadius = 12
@@ -57,35 +81,34 @@ final class FloatingTranslationPanel {
         panel.contentView = wrapper
         self.hostView = hostView
 
-        // Initial size from content
         let fittingSize = hostView.fittingSize
         let initialHeight = min(max(fittingSize.height, 80), 400)
         panel.setContentSize(NSSize(width: 340, height: initialHeight))
 
-        // Position below cursor
         let origin = NSPoint(x: point.x - 170, y: point.y - initialHeight - 10)
         panel.setFrameOrigin(origin)
         panel.orderFrontRegardless()
 
         self.panel = panel
 
-        // Resize panel as translation streams in
-        resizeCancellable = viewModel.$translatedText
-            .throttle(for: .milliseconds(100), scheduler: RunLoop.main, latest: true)
-            .sink { [weak self] _ in
-                self?.resizeToFit()
-            }
-
-        // Click outside to dismiss
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             self?.dismiss()
         }
 
-        // Start translation
         viewModel.translate(with: provider)
     }
 
     // MARK: - Private
+
+    private func scheduleResize() {
+        guard resizeTask == nil else { return }
+        resizeTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            self?.resizeToFit()
+            self?.resizeTask = nil
+        }
+    }
 
     private func resizeToFit() {
         guard let panel, let hostView else { return }
@@ -93,7 +116,6 @@ final class FloatingTranslationPanel {
         let newHeight = min(max(fittingSize.height, 80), 400)
         let oldFrame = panel.frame
 
-        // Grow upward (keep bottom-left, expand top)
         let newFrame = NSRect(
             x: oldFrame.origin.x,
             y: oldFrame.origin.y - (newHeight - oldFrame.height),
@@ -104,8 +126,8 @@ final class FloatingTranslationPanel {
     }
 
     func dismiss() {
-        resizeCancellable?.cancel()
-        resizeCancellable = nil
+        resizeTask?.cancel()
+        resizeTask = nil
         hostView = nil
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
@@ -119,21 +141,48 @@ final class FloatingTranslationPanel {
 // MARK: - ViewModel
 
 @MainActor
-final class FloatingTranslationViewModel: ObservableObject {
+@Observable
+final class FloatingTranslationViewModel {
 
-    @Published var sourceText: String = ""
-    @Published var translatedText: String = ""
-    @Published var isTranslating: Bool = false
-    @Published var hasError: Bool = false
+    var sourceText: String = ""
+    var translatedText: String = ""
+    var isTranslating: Bool = false
+    var hasError: Bool = false
+    var isReplacing: Bool = false
 
+    private let settings: AppSettings
+    private let textReplacer: TextReplacing
+    private let permissions: AccessibilityPermissionChecking
     private var currentTask: Task<Void, Never>?
+
+    init(
+        settings: AppSettings,
+        textReplacer: TextReplacing,
+        permissions: AccessibilityPermissionChecking
+    ) {
+        self.settings = settings
+        self.textReplacer = textReplacer
+        self.permissions = permissions
+    }
 
     func reset() {
         sourceText = ""
         translatedText = ""
         isTranslating = false
         hasError = false
+        isReplacing = false
         currentTask?.cancel()
+    }
+
+    func replaceSelection() async {
+        guard !translatedText.isEmpty, !isReplacing else { return }
+        guard permissions.isTrusted else {
+            permissions.promptIfNeeded()
+            return
+        }
+        isReplacing = true
+        await textReplacer.replaceSelection(with: translatedText)
+        isReplacing = false
     }
 
     func translate(with provider: TranslationProvider) {
@@ -143,7 +192,6 @@ final class FloatingTranslationViewModel: ObservableObject {
         hasError = false
         translatedText = ""
 
-        let settings = AppSettings.shared
         let text = sourceText
         let source = settings.sourceLanguage
         let target = settings.targetLanguage
@@ -169,12 +217,13 @@ final class FloatingTranslationViewModel: ObservableObject {
 
 struct FloatingTranslationView: View {
 
-    @ObservedObject var viewModel: FloatingTranslationViewModel
+    @Bindable var viewModel: FloatingTranslationViewModel
     let onDismiss: () -> Void
+    let onReplace: () -> Void
+    let onTranslatedTextChanged: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Header
             HStack {
                 Image(systemName: "translate")
                     .font(.system(size: 11))
@@ -205,7 +254,6 @@ struct FloatingTranslationView: View {
 
             Divider()
 
-            // Translation
             if viewModel.hasError {
                 Text("Translation failed")
                     .font(.system(size: 12))
@@ -221,10 +269,19 @@ struct FloatingTranslationView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
 
-            // Copy button
             if !viewModel.translatedText.isEmpty {
                 HStack {
                     Spacer()
+                    Button {
+                        onReplace()
+                    } label: {
+                        Label("Replace", systemImage: "text.insert")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .disabled(viewModel.isTranslating || viewModel.isReplacing)
+
                     Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(viewModel.translatedText, forType: .string)
@@ -248,5 +305,8 @@ struct FloatingTranslationView: View {
                 .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+        .onChange(of: viewModel.translatedText) { _, _ in
+            onTranslatedTextChanged()
+        }
     }
 }

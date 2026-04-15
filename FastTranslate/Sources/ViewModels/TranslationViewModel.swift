@@ -1,11 +1,9 @@
 import Foundation
-import SwiftUI
-import Combine
+import Observation
 
 @MainActor
-final class TranslationViewModel: ObservableObject {
-
-    // MARK: - Input
+@Observable
+final class TranslationViewModel {
 
     enum Input {
         case translate
@@ -16,8 +14,6 @@ final class TranslationViewModel: ObservableObject {
         case swapTexts(newInput: String, newOutput: String)
     }
 
-    // MARK: - Translation State
-
     enum TranslationState: Equatable {
         case idle
         case translating
@@ -25,12 +21,12 @@ final class TranslationViewModel: ObservableObject {
         case error(String)
     }
 
-    // MARK: - Output (Published state for View bindings)
-
-    @Published var inputText: String = ""
-    @Published private(set) var outputText: String = ""
-    @Published private(set) var translationState: TranslationState = .idle
-    @Published private(set) var isOllamaReachable: Bool = false
+    var inputText: String = "" {
+        didSet { scheduleAutoTranslate() }
+    }
+    private(set) var outputText: String = ""
+    private(set) var translationState: TranslationState = .idle
+    private(set) var isOllamaReachable: Bool = false
 
     var isTranslating: Bool { translationState == .translating }
     var errorMessage: String? {
@@ -38,32 +34,15 @@ final class TranslationViewModel: ObservableObject {
         return nil
     }
 
-    // MARK: - Private
-
     private var provider: TranslationProvider
+    private let settings: AppSettings
     private var currentTask: Task<Void, Never>?
-    private var cancellables = Set<AnyCancellable>()
+    private var debounceTask: Task<Void, Never>?
 
-    // MARK: - Init
-
-    init(provider: TranslationProvider) {
+    init(provider: TranslationProvider, settings: AppSettings) {
         self.provider = provider
-        setupAutoTranslate()
+        self.settings = settings
     }
-
-    private func setupAutoTranslate() {
-        $inputText
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
-            .removeDuplicates()
-            .sink { [weak self] text in
-                guard let self,
-                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                self.translate()
-            }
-            .store(in: &cancellables)
-    }
-
-    // MARK: - Input handling
 
     func send(_ input: Input) {
         switch input {
@@ -83,7 +62,16 @@ final class TranslationViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private methods
+    private func scheduleAutoTranslate() {
+        debounceTask?.cancel()
+        let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        debounceTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            self?.translate()
+        }
+    }
 
     private func translate() {
         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -92,11 +80,9 @@ final class TranslationViewModel: ObservableObject {
         outputText = ""
         translationState = .translating
 
-        let settings = AppSettings.shared
         let text = inputText
         let source = settings.sourceLanguage
         let target = settings.targetLanguage
-
         let stream = provider.translate(text: text, from: source, to: target)
 
         currentTask = Task {
@@ -134,6 +120,7 @@ final class TranslationViewModel: ObservableObject {
     }
 
     private func clearAll() {
+        debounceTask?.cancel()
         inputText = ""
         outputText = ""
         currentTask?.cancel()
