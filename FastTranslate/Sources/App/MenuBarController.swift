@@ -1,23 +1,25 @@
 import Cocoa
 import SwiftUI
 
+@MainActor
 final class MenuBarController {
 
     private var statusItem: NSStatusItem
-    private var popover: NSPopover
+    private var panel: MenuBarPanel
     private var eventMonitor: EventMonitor?
+    private let viewModel: TranslationViewModel
 
-    init(settings: AppSettings) {
+    init(settings: AppSettings, viewModel: TranslationViewModel) {
+        self.viewModel = viewModel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        // Configure popover
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 380, height: 320)
-        popover.behavior = .transient
-        popover.animates = true
-
-        let contentView = TranslateView(settings: settings)
-        popover.contentViewController = NSHostingController(rootView: contentView)
+        // Build the SwiftUI content and wrap it in an NSHostingController so
+        // the borderless panel can host it the same way NSPopover did. The
+        // view model is owned by `AppDelegate` and injected here so that
+        // other observers (e.g. the notch overlay broadcaster) can share it.
+        let contentView = TranslateView(settings: settings, viewModel: viewModel)
+        let hostingController = NSHostingController(rootView: contentView)
+        panel = MenuBarPanel(contentViewController: hostingController)
 
         // Menu bar icon (after all stored properties are initialized)
         if let button = statusItem.button {
@@ -27,13 +29,18 @@ final class MenuBarController {
         }
 
         eventMonitor = EventMonitor(mask: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, self.popover.isShown else { return }
-            self.closePopover()
+            // EventMonitor callbacks arrive on the main thread, but the
+            // closure itself is non-isolated. Hop to the main actor to touch
+            // MenuBarController state safely.
+            Task { @MainActor in
+                guard let self, self.panel.isShown else { return }
+                self.closePopover()
+            }
         }
     }
 
     @objc func togglePopover() {
-        if popover.isShown {
+        if panel.isShown {
             closePopover()
         } else {
             openPopover()
@@ -42,12 +49,15 @@ final class MenuBarController {
 
     private func openPopover() {
         guard let button = statusItem.button else { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // Each open starts from a clean slate — users expect the popover to
+        // forget the previous translation, not resume it.
+        viewModel.send(.clearAll)
+        panel.show(relativeTo: button)
         eventMonitor?.start()
     }
 
     private func closePopover() {
-        popover.performClose(nil)
+        panel.close()
         eventMonitor?.stop()
     }
 

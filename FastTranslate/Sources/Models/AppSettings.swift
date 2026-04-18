@@ -15,6 +15,8 @@ final class AppSettings {
         static let targetLanguage = "targetLanguage"
         static let launchAtLogin = "launchAtLogin"
         static let inlineTranslation = "inlineTranslation"
+        static let liquidGlassEnabled = "liquidGlassEnabled"
+        static let notchOverlayEnabled = "notchOverlayEnabled"
     }
 
     var ollamaURL: String {
@@ -35,6 +37,14 @@ final class AppSettings {
 
     var inlineTranslation: Bool {
         didSet { storage.set(inlineTranslation, forKey: Keys.inlineTranslation) }
+    }
+
+    var liquidGlassEnabled: Bool {
+        didSet { storage.set(liquidGlassEnabled, forKey: Keys.liquidGlassEnabled) }
+    }
+
+    var notchOverlayEnabled: Bool {
+        didSet { storage.set(notchOverlayEnabled, forKey: Keys.notchOverlayEnabled) }
     }
 
     var launchAtLogin: Bool {
@@ -63,6 +73,16 @@ final class AppSettings {
             storage.set(true, forKey: Keys.inlineTranslation)
         }
         inlineTranslation = storage.bool(forKey: Keys.inlineTranslation)
+
+        if storage.object(forKey: Keys.liquidGlassEnabled) == nil {
+            storage.set(true, forKey: Keys.liquidGlassEnabled)
+        }
+        liquidGlassEnabled = storage.bool(forKey: Keys.liquidGlassEnabled)
+
+        if storage.object(forKey: Keys.notchOverlayEnabled) == nil {
+            storage.set(true, forKey: Keys.notchOverlayEnabled)
+        }
+        notchOverlayEnabled = storage.bool(forKey: Keys.notchOverlayEnabled)
 
         if storage.object(forKey: Keys.launchAtLogin) == nil {
             storage.set(true, forKey: Keys.launchAtLogin)

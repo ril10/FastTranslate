@@ -7,7 +7,10 @@ final class FloatingTranslationPanel {
 
     private var panel: NSPanel?
     private var hostView: NSHostingView<FloatingTranslationView>?
-    private let viewModel: FloatingTranslationViewModel
+    /// Exposed so cross-cutting observers (e.g. `TranslationActivityBroadcaster`)
+    /// can subscribe to the inline translation state from a single owner at
+    /// the app root. The panel itself is the only mutator.
+    let viewModel: FloatingTranslationViewModel
     private var eventMonitor: Any?
     private var resizeTask: Task<Void, Never>?
 

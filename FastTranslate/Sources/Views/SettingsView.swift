@@ -11,6 +11,12 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var settingsVM = SettingsViewModel()
 
+    private var appVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+        return "\(short) (\(build))"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Title bar
@@ -113,9 +119,15 @@ struct SettingsView: View {
                     Toggle("Inline translation (⌘⇧T)", isOn: $settings.inlineTranslation)
                 }
 
+                // MARK: Appearance
+                Section("Appearance") {
+                    Toggle("Liquid Glass UI", isOn: $settings.liquidGlassEnabled)
+                    Toggle("Show in notch area", isOn: $settings.notchOverlayEnabled)
+                }
+
                 // MARK: About
                 Section("About") {
-                    LabeledContent("Version", value: "1.0.0")
+                    LabeledContent("Version", value: appVersion)
                     LabeledContent("Requires", value: "Ollama running locally")
 
                     Link("Get Ollama →", destination: Constants.ollamaURL)
@@ -124,8 +136,18 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .padding(.horizontal, 4)
+            // Form controls (Toggle, Picker) hosted inside a borderless
+            // translucent NSPanel don't receive the system accent tint by
+            // default, so they render washed-out grey. Applying `.tint`
+            // explicitly restores the expected blue accent on the Toggle
+            // thumbs and other interactive controls.
+            .tint(Color.accentColor)
         }
         .frame(width: 420, height: 480)
+        // Sheets inherit the translucent Liquid Glass backdrop from their
+        // parent popover. Force an opaque window background so Form controls
+        // render against a solid surface instead of the glass material.
+        .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             settingsVM.refreshModels(url: settings.ollamaURL, settings: settings)
         }

@@ -7,10 +7,13 @@ struct TranslateView: View {
     @State private var showSettings = false
     @State private var copied = false
 
-    init(settings: AppSettings) {
+    /// The view model is injected from above (created in `AppDelegate`) so
+    /// that it can be shared with cross-cutting observers such as the
+    /// `TranslationActivityBroadcaster`. Keeping ownership at the app root
+    /// level also means the popover can be re-hosted without losing state.
+    init(settings: AppSettings, viewModel: TranslationViewModel) {
         self.settings = settings
-        let provider = OllamaProvider(baseURL: settings.ollamaURL, model: settings.selectedModel)
-        _viewModel = State(initialValue: TranslationViewModel(provider: provider, settings: settings))
+        _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
@@ -39,7 +42,8 @@ struct TranslateView: View {
                 .padding(.vertical, 6)
         }
         .frame(width: 380)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(glassBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: settings)
                 .onDisappear {
@@ -307,6 +311,23 @@ struct TranslateView: View {
         // Swap text too if translation exists
         if !viewModel.outputText.isEmpty {
             viewModel.send(.swapTexts(newInput: viewModel.outputText, newOutput: viewModel.inputText))
+        }
+    }
+
+    // MARK: - Glass Background
+
+    /// Background for the menu bar popover. When Liquid Glass is enabled in
+    /// settings, the content renders over `.glassEffect` so the borderless
+    /// `MenuBarPanel` shows the translucent Liquid Glass look. Otherwise we
+    /// fall back to the standard opaque window background.
+    @ViewBuilder
+    private var glassBackground: some View {
+        if settings.liquidGlassEnabled {
+            Rectangle()
+                .fill(.clear)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } else {
+            Color(NSColor.windowBackgroundColor)
         }
     }
 }
