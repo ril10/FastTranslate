@@ -1,5 +1,15 @@
 import AppKit
 
+/// NSPanel subclass that accepts keyboard input while borderless. AppKit
+/// returns `false` from `canBecomeKey` for borderless windows by default,
+/// which means hosted text fields never receive keystrokes. Overriding
+/// both flags to `true` restores normal text-input behaviour inside the
+/// panel without forcing a titled style mask.
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 /// Borderless floating panel used as a drop-in replacement for `NSPopover`
 /// in the menu bar. Unlike `NSPopover`, it gives full control over the
 /// window chrome, which is required to apply the SwiftUI `.glassEffect()`
@@ -25,7 +35,7 @@ final class MenuBarPanel {
     // MARK: - Init
 
     init(contentViewController: NSViewController) {
-        panel = NSPanel(
+        panel = KeyablePanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
