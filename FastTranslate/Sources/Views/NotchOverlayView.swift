@@ -37,10 +37,7 @@ struct NotchOverlayView: View {
         .spring(response: 0.42, dampingFraction: 0.72, blendDuration: 0)
     }
 
-    private var isVisible: Bool {
-        if case .idle = viewModel.activity.state { return false }
-        return true
-    }
+    private var isVisible: Bool { viewModel.isPresenting }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -94,26 +91,55 @@ struct NotchOverlayView: View {
     }
 
     private var currentWidth: CGFloat {
-        viewModel.isExpanded
+        if viewModel.toast != nil {
+            return toastWidth
+        }
+        return viewModel.isExpanded
             ? expandedWidth
             : notchSize.width + collapsedExtraWidth
     }
+
+    private var toastWidth: CGFloat { notchSize.width + collapsedExtraWidth }
 
     // MARK: - Content
 
     @ViewBuilder
     private var content: some View {
-        switch viewModel.activity.state {
-        case .idle:
-            EmptyView()
-        case .translating:
-            collapsedContent
-        case .streaming(let source, let translated):
-            expandedContent(source: source, translated: translated, isError: false)
-        case .done(let source, let translated):
-            expandedContent(source: source, translated: translated, isError: false)
-        case .error(let source):
-            expandedContent(source: source, translated: "Translation failed", isError: true)
+        if let toast = viewModel.toast {
+            toastContent(toast)
+        } else {
+            switch viewModel.activity.state {
+            case .idle:
+                EmptyView()
+            case .translating:
+                collapsedContent
+            case .streaming(let source, let translated):
+                expandedContent(source: source, translated: translated, isError: false)
+            case .done(let source, let translated):
+                expandedContent(source: source, translated: translated, isError: false)
+            case .error(let source):
+                expandedContent(source: source, translated: "Translation failed", isError: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func toastContent(_ toast: NotchToast) -> some View {
+        switch toast {
+        case .targetLanguage(let language):
+            HStack(spacing: 8) {
+                Text(language.flag)
+                    .font(.system(size: 18))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Target language")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                    Text(language.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(height: 30)
         }
     }
 

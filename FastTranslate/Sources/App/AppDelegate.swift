@@ -1,4 +1,5 @@
 import Cocoa
+import Carbon.HIToolbox
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -49,9 +50,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.menuBarViewModel = menuBarVM
 
         menuBarController = MenuBarController(settings: settings, viewModel: menuBarVM)
-        hotkeyService = GlobalHotkeyService { [weak coordinator] in
-            Task { await coordinator?.trigger() }
-        }
+        hotkeyService = GlobalHotkeyService(hotkeys: [
+            // Cmd+Shift+T — trigger inline translation of the current selection.
+            .init(
+                keyCode: UInt32(kVK_ANSI_T),
+                modifiers: UInt32(cmdKey | shiftKey)
+            ) { [weak coordinator] in
+                Task { await coordinator?.trigger() }
+            },
+            // Cmd+Shift+L — cycle the target language and flash a toast in
+            // the notch overlay so the user can see what they landed on.
+            .init(
+                keyCode: UInt32(kVK_ANSI_L),
+                modifiers: UInt32(cmdKey | shiftKey)
+            ) { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.cycleTargetLanguage()
+                }
+            }
+        ])
 
         // Aggregate both view models into a single activity stream. This is
         // what the notch overlay (and potentially other future consumers)
@@ -114,6 +131,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Advance `targetLanguage` to the next entry in `Language.targets`
+    /// and flash a toast in the notch overlay. No-op if settings aren't
+    /// ready yet; the toast is silently skipped when the display has no
+    /// notch (the language still cycles).
+    private func cycleTargetLanguage() {
+        guard let settings else { return }
+        let targets = Language.targets
+        guard !targets.isEmpty else { return }
+        let next: Language
+        if let idx = targets.firstIndex(of: settings.targetLanguage) {
+            next = targets[(idx + 1) % targets.count]
+        } else {
+            next = targets[0]
+        }
+        settings.targetLanguage = next
+        notchOverlayVM?.showToast(.targetLanguage(next))
+    }
+
     /// Observe system-level events that can invalidate the notch overlay's
     /// position or make it impossible to show (fullscreen apps hide the
     /// notch area, display reconfigurations move screens around, etc.).
@@ -154,14 +189,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                       let notchPanel = self.notchOverlayPanel,
                       let notchVM = self.notchOverlayVM else { return }
                 if geometry.hasNotch {
-                    // Re-sync visibility with whatever the current activity
-                    // says — if we're idle we stay hidden, otherwise show.
-                    switch notchVM.activity.state {
-                    case .idle:
-                        notchPanel.hide()
-                    case .translating, .streaming, .done, .error:
+                    // Re-sync visibility with whatever's currently on-screen
+                    // — translation activity or a live toast.
+                    if notchVM.isPresenting {
                         notchPanel.updateLayout()
                         notchPanel.show()
+                    } else {
+                        notchPanel.hide()
                     }
                 } else {
                     notchPanel.hide()
@@ -182,6 +216,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = withObservationTracking {
             _ = broadcaster.activity
             _ = self.settings?.notchOverlayEnabled
+            // Track the toast so language-cycle toasts (fired outside the
+            // broadcaster's activity stream) also drive panel visibility.
+            _ = notchVM.toast
         } onChange: { [weak self, weak broadcaster, weak notchVM, weak notchPanel] in
             Task { @MainActor [weak self] in
                 guard let self,
@@ -198,17 +235,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     return
                 }
 
-                let current = broadcaster.activity
-                notchVM.apply(current)
-                // Use the view model's resolved state rather than the raw
-                // broadcaster value so a manual dismiss (which collapses
-                // `activity` back to .idle) correctly hides the panel.
-                switch notchVM.activity.state {
-                case .idle:
-                    notchPanel.hide()
-                case .translating, .streaming, .done, .error:
+                notchVM.apply(broadcaster.activity)
+                // `isPresenting` rolls up translation activity + toast so
+                // either source can drive show/hide without duplicated logic.
+                if notchVM.isPresenting {
                     notchPanel.updateLayout()
                     notchPanel.show()
+                } else {
+                    notchPanel.hide()
                 }
                 self.observeBroadcaster(broadcaster, notchVM: notchVM, notchPanel: notchPanel)
             }
